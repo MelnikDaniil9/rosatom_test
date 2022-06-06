@@ -10,6 +10,16 @@ from fastapi import FastAPI
 app = FastAPI()
 
 
-@app.get("/")
-def first_commit():
-    return {"Hello": "World"}
+@app.get("/frames/{request_id}/")
+def get_images(request_id):
+    return request_id
+
+
+@app.post("/frames/")
+def upload_images():
+    return "successful uploaded"
+
+
+@app.delete("/frames/{request_id}/")
+def delete_images(request_id):
+    return request_id
