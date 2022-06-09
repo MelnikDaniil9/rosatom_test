@@ -8,15 +8,31 @@ from typing import List
 from fastapi import FastAPI, status, File, HTTPException, UploadFile
 from databases import Database
 
-database = Database("postgresql+asyncpg://postgres:postgrespw@localhost:49153/postgres")
 
+database = Database("postgresql+asyncpg://postgres:postgrespw@localhost:49154/postgres")
 app = FastAPI()
 
 
 @database.transaction()
-async def select_images():
-    result = await database.fetch_all("SELECT now() as now")
-    return result
+async def insert_images(values: list):
+    create_images_sql = """
+        insert into inbox(image_name, request_uuid)
+        values (:image_name, :request_uuid);
+        """
+    return await database.execute_many(
+        query=create_images_sql, values=values
+    )
+
+
+@database.transaction()
+async def delete_images_from_db(request_uuid):
+    delete_images_sql = """
+        delete from inbox
+        where request_uuid = :request_uuid;
+    """
+    await database.execute(
+        query=delete_images_sql, values={"request_uuid": request_uuid}
+    )
 
 
 @database.transaction()
@@ -65,32 +81,25 @@ async def get_images(request_uuid: str):
 
 @app.post("/frames/")
 async def upload_images(images: List[UploadFile] = File(...)):
-    """
- :param images: список изображений в байтовом формате
- :return:
-    """
     if not (0 < len(images) < 16):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Необходимо от 1 до 15 изображений",
         )
-    images_ = []
+    values = []
+    request_uuid = str(uuid.uuid4())
     for i, image in enumerate(images, start=1):
         if image.content_type != "image/jpeg":
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail=f"Неверный формат {i} изображения {image.content_type}"
             )
-        images_.append((f'{uuid.uuid4()}.jpg', image))
-    request_uuid = str(uuid.uuid4())
-    # TODO generate images name as uuid4() + '.jpg'
-    # TODO insert into database
-    # TODO await insert_into_inbox(request_uuid, images_)
-    # TODO insert images into min.io
-
-    return ['uuid1.jpg', 'uuid2.jpg']
+        values.append({"image_name": f'{uuid.uuid4()}.jpg', "request_uuid": request_uuid})
+    await insert_images(values)
+    return {request_uuid: [value["image_name"] for value in values]}
 
 
-@app.delete("/frames/{request_id}/")
-async def delete_images(request_id):
-    return request_id
+@app.delete("/frames/{request_uuid}/")
+async def delete_images(request_uuid: str):
+    await delete_images_from_db(request_uuid)
+    return "success"
