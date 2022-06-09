@@ -99,10 +99,12 @@ async def upload_images(images: List[UploadFile] = File(...)):
             )
         values.append({"image_name": f'{uuid.uuid4()}.jpg', "request_uuid": request_uuid})
     await insert_images(values)
+    # TODO add images to min.io
     return {request_uuid: [value["image_name"] for value in values]}
 
 
 @app.delete("/frames/{request_uuid}/")
 async def delete_images(request_uuid: str):
     await delete_images_from_db(request_uuid)
+    # TODO delete images from min.io
     return "success"
