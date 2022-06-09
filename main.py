@@ -12,33 +12,33 @@ from dotenv import dotenv_values
 
 
 config = dotenv_values(".config")
-database = Database(config["POSTGRES"])
 app = FastAPI()
+app.database = Database(config["POSTGRES"])
 
 
-@database.transaction()
+@app.database.transaction()
 async def insert_images(values: list):
     create_images_sql = """
         insert into inbox(image_name, request_uuid)
         values (:image_name, :request_uuid);
         """
-    return await database.execute_many(
+    return await app.database.execute_many(
         query=create_images_sql, values=values
     )
 
 
-@database.transaction()
+@app.database.transaction()
 async def delete_images_from_db(request_uuid):
     delete_images_sql = """
         delete from inbox
         where request_uuid = :request_uuid;
     """
-    await database.execute(
+    await app.database.execute(
         query=delete_images_sql, values={"request_uuid": request_uuid}
     )
 
 
-@database.transaction()
+@app.database.transaction()
 async def create_inbox():
     create_inbox_sql = """
         create table if not exists inbox (
@@ -48,18 +48,18 @@ async def create_inbox():
           created_time timestamp default now()
         );
         """
-    await database.execute(create_inbox_sql)
+    await app.database.execute(create_inbox_sql)
 
 
 @app.on_event("startup")
 async def startup():
-    await database.connect()
+    await app.database.connect()
     await create_inbox()
 
 
 @app.on_event("shutdown")
 async def shutdown():
-    await database.disconnect()
+    await app.database.disconnect()
 
 
 @app.get("/frames/{request_uuid}/")
@@ -69,7 +69,7 @@ async def get_images(request_uuid: str):
     from inbox
     where request_uuid = :request_uuid;
     """
-    rows = await database.fetch_all(
+    rows = await app.database.fetch_all(
         select_images_sql, values={'request_uuid': request_uuid}
     )
     response = []
