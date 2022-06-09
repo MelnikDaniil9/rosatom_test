@@ -22,7 +22,7 @@ async def insert_images(values: list):
         insert into inbox(image_name, request_uuid)
         values (:image_name, :request_uuid);
         """
-    return await app.database.execute_many(
+    await app.database.execute_many(
         query=create_images_sql, values=values
     )
 
@@ -70,7 +70,7 @@ async def get_images(request_uuid: str):
     where request_uuid = :request_uuid;
     """
     rows = await app.database.fetch_all(
-        select_images_sql, values={'request_uuid': request_uuid}
+        select_images_sql, values={"request_uuid": request_uuid}
     )
     response = []
     for row in rows:
