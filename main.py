@@ -5,11 +5,14 @@
 """
 import uuid
 from typing import List
+
 from fastapi import FastAPI, status, File, HTTPException, UploadFile
 from databases import Database
+from dotenv import dotenv_values
 
 
-database = Database("postgresql+asyncpg://postgres:postgrespw@localhost:49154/postgres")
+config = dotenv_values(".config")
+database = Database(config["POSTGRES"])
 app = FastAPI()
 
 
